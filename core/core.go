@@ -12,7 +12,7 @@ import (
 type HandlerFunc func(data map[string]string) string
 
 var InterfaceRegistry = make(map[string]bool)
-var PluginRegistry = make(map[string]map[string]map[string]HandlerFunc) // interface -> plugin -> method -> handler
+var PluginRegistry = make(map[string]map[string]map[string]HandlerFunc)
 
 type Config struct {
 	Interfaces []struct {
@@ -126,3 +126,13 @@ func Route(w http.ResponseWriter, r *http.Request) {
 	result := handler(data)
 	fmt.Fprintln(w, result)
 }
+
+// we do not want user to know interfaces and plugins
+// email/send
+// payment/charge
+
+// profobuff (they will know this)
+// try grpc client to access
+// service
+// it should work from grpc client
+// create more endpoints
