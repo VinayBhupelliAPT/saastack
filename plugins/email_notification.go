@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"fmt"
-	"sample/interfaces"
 )
 
 type EmailPlugin struct{}
@@ -23,9 +22,4 @@ func (e *EmailPlugin) Update(data map[string]string) string {
 	msg := data["message"]
 	fmt.Println("EmailPlugin updating:", msg)
 	return "EmailPlugin updated: " + msg
-}
-
-func init() {
-	plugin := &EmailPlugin{}
-	interfaces.RegisterNotificationPlugin("email", plugin)
 }
