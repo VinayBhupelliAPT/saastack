@@ -1,24 +1,20 @@
 package main
 
 import (
-	"net/http"
-	"sample/core"
-	"sample/plugins"
+	"log"
+	"os"
+	"sample/server"
 )
 
 func main() {
-
-	pluginMap := map[string]interface{}{
-		"email":  &plugins.EmailPlugin{},
-		"stripe": &plugins.StripePlugin{},
+	log.Println("Starting gRPC servers...")
+	err := server.StartServers()
+	if err != nil {
+		log.Fatalf("Failed to start servers: %v", err)
+		os.Exit(1)
 	}
-
-	if err := core.InitializeFromConfig("config/plugins.yaml", pluginMap); err != nil {
-		panic(err)
-	}
-
-	http.HandleFunc("/api", core.Route)
-	http.ListenAndServe(":8080", nil)
+	log.Println("Servers are running. Press Ctrl+C to stop.")
+	select {} // Block forever
 }
 
 // http://localhost:8080/api?interface=notification&plugin=email&method=Send&message=Hello

@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package proto;
+option go_package = "./payment";
+
+import "google/api/annotations.proto";
+
+service PaymentService {
+  rpc Charge(ChargeRequest) returns (ChargeResponse) {
+    option (google.api.http) = {
+      post: "/payment/charge"
+      body: "*"
+    };
+  }
+  rpc Refund(RefundRequest) returns (RefundResponse) {
+    option (google.api.http) = {
+      post: "/payment/refund"
+      body: "*"
+    };
+  }
+  rpc Status(StatusRequest) returns (StatusResponse) {
+    option (google.api.http) = {
+      post: "/payment/status"
+      body: "*"
+    };
+  }
+}
+
+message ChargeRequest {
+  string message = 1;
+  string plugin = 2; 
+}
+
+message ChargeResponse {
+  string result = 1;
+}
+
+message RefundRequest {
+  string message = 1;
+  string plugin = 2;
+}
+
+message RefundResponse {
+  string result = 1;
+}
+
+message StatusRequest {
+  string message = 1;
+  string plugin = 2; 
+}
+
+message StatusResponse {
+  string result = 1;
+} 

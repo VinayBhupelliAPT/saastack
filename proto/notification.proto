@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package proto;
+option go_package = "./notification";
+
+import "google/api/annotations.proto";
+
+service NotificationService {
+  rpc Send(SendRequest) returns (SendResponse) {
+    option (google.api.http) = {
+      post: "/notification/send"
+      body: "*"
+    };
+  }
+  rpc Delete(DeleteRequest) returns (DeleteResponse) {
+    option (google.api.http) = {
+      post: "/notification/delete"
+      body: "*"
+    };
+  }
+  rpc Update(UpdateRequest) returns (UpdateResponse) {
+    option (google.api.http) = {
+      post: "/notification/update"
+      body: "*"
+    };
+  }
+}
+
+message SendRequest {
+  string message = 1;
+  string plugin = 2; 
+}
+
+message SendResponse {
+  string result = 1;
+}
+
+message DeleteRequest {
+  string message = 1;
+  string plugin = 2;
+}
+
+message DeleteResponse {
+  string result = 1;
+}
+
+message UpdateRequest {
+  string message = 1;
+  string plugin = 2; 
+}
+
+message UpdateResponse {
+  string result = 1;
+} 
