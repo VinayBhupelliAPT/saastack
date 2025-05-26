@@ -34,8 +34,7 @@ func StartServers() error {
 		return fmt.Errorf("failed to initialize plugins from config: %v", err)
 	}
 
-	// Start gRPC servers
-	// Start notification gRPC server
+	// Start gRPC server
 	go func() {
 		lis, err := net.Listen("tcp", ":50051")
 		if err != nil {
@@ -43,21 +42,8 @@ func StartServers() error {
 		}
 		s := grpc.NewServer()
 		pb_notification.RegisterNotificationServiceServer(s, notificationServer)
-		fmt.Println("Notification gRPC server started on :50051")
-		if err := s.Serve(lis); err != nil {
-			log.Fatalf("failed to serve: %v", err)
-		}
-	}()
-
-	// Start payment gRPC server
-	go func() {
-		lis, err := net.Listen("tcp", ":50052")
-		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
-		}
-		s := grpc.NewServer()
 		pb_payment.RegisterPaymentServiceServer(s, paymentServer)
-		fmt.Println("Payment gRPC server started on :50052")
+		fmt.Println("gRPC server started on :50051")
 		if err := s.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
@@ -81,7 +67,7 @@ func StartServers() error {
 
 		// Register payment service
 		if err := pb_payment.RegisterPaymentServiceHandlerFromEndpoint(
-			ctx, mux, "localhost:50052", opts,
+			ctx, mux, "localhost:50051", opts,
 		); err != nil {
 			log.Fatalf("Failed to register payment gateway: %v", err)
 		}
