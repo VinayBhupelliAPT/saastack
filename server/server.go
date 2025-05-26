@@ -133,24 +133,22 @@ func (s *PaymentServer) Status(ctx context.Context, req *pb_payment.StatusReques
 }
 
 func StartServers() error {
-	// Notification
+	// Create plugin maps
 	notificationServer := NewNotificationServer()
-	core.InterfaceRegistry["notification"] = true
-	core.PluginRegistry["notification"] = make(map[string]map[string]core.HandlerFunc)
+	paymentServer := NewPaymentServer()
+
+	// Combine plugin maps
+	pluginMap := make(map[string]interface{})
 	for name, plugin := range notificationServer.pluginMap {
-		if err := core.RegisterPlugin("notification", name, plugin); err != nil {
-			return fmt.Errorf("failed to register notification plugin '%s': %v", name, err)
-		}
+		pluginMap[name] = plugin
+	}
+	for name, plugin := range paymentServer.pluginMap {
+		pluginMap[name] = plugin
 	}
 
-	// Payment
-	paymentServer := NewPaymentServer()
-	core.InterfaceRegistry["payment"] = true
-	core.PluginRegistry["payment"] = make(map[string]map[string]core.HandlerFunc)
-	for name, plugin := range paymentServer.pluginMap {
-		if err := core.RegisterPlugin("payment", name, plugin); err != nil {
-			return fmt.Errorf("failed to register payment plugin '%s': %v", name, err)
-		}
+	// Initialize plugins from config
+	if err := core.InitializeFromConfig("config/plugins.yaml", pluginMap); err != nil {
+		return fmt.Errorf("failed to initialize plugins from config: %v", err)
 	}
 
 	// Start gRPC servers
