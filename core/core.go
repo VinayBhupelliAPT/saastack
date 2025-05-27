@@ -15,13 +15,10 @@ var InterfaceRegistry = make(map[string]bool)
 var PluginRegistry = make(map[string]map[string]map[string]HandlerFunc)
 
 type Config struct {
-	Interfaces []struct {
-		Name    string `yaml:"name"`
-		Plugins []struct {
-			Name    string   `yaml:"name"`
-			Methods []string `yaml:"methods"`
-		} `yaml:"plugins"`
-	} `yaml:"interfaces"`
+	Plugins []struct {
+		Name      string `yaml:"name"`
+		Interface string `yaml:"interface"`
+	} `yaml:"plugins"`
 }
 
 func LoadConfig(configPath string) (*Config, error) {
@@ -43,23 +40,29 @@ func RegisterPlugin(interfaceName, pluginName string, plugin interface{}) error 
 		return fmt.Errorf("interface '%s' not registered", interfaceName)
 	}
 
-	pluginValue := reflect.ValueOf(plugin)
-	pluginType := pluginValue.Type()
-
 	if _, ok := PluginRegistry[interfaceName][pluginName]; !ok {
 		PluginRegistry[interfaceName][pluginName] = make(map[string]HandlerFunc)
 	}
+
+	// Get method values using reflection
+	pluginValue := reflect.ValueOf(plugin)
+	pluginType := pluginValue.Type()
 
 	// Get all methods from the plugin
 	for i := 0; i < pluginType.NumMethod(); i++ {
 		method := pluginType.Method(i)
 		methodName := method.Name
 
+		// Get the method value
+		methodValue := pluginValue.Method(i)
+
 		// Create a handler function for this method
 		handler := func(data map[string]string) string {
-			args := []reflect.Value{pluginValue, reflect.ValueOf(data)}
-			results := method.Func.Call(args)
-			return results[0].String()
+			// Convert method value to HandlerFunc type
+			if methodFunc, ok := methodValue.Interface().(func(map[string]string) string); ok {
+				return methodFunc(data)
+			}
+			return fmt.Sprintf("Error: method %s is not of type func(map[string]string) string", methodName)
 		}
 
 		PluginRegistry[interfaceName][pluginName][methodName] = handler
@@ -75,19 +78,23 @@ func InitializeFromConfig(configPath string, pluginMap map[string]interface{}) e
 		return err
 	}
 
-	for _, iface := range config.Interfaces {
-		InterfaceRegistry[iface.Name] = true
-		PluginRegistry[iface.Name] = make(map[string]map[string]HandlerFunc)
+	// First pass: register all interfaces
+	for _, plugin := range config.Plugins {
+		InterfaceRegistry[plugin.Interface] = true
+		if _, ok := PluginRegistry[plugin.Interface]; !ok {
+			PluginRegistry[plugin.Interface] = make(map[string]map[string]HandlerFunc)
+		}
+	}
 
-		for _, plugin := range iface.Plugins {
-			pluginInstance, exists := pluginMap[plugin.Name]
-			if !exists {
-				return fmt.Errorf("plugin '%s' not found in plugin map", plugin.Name)
-			}
+	// Second pass: register all plugins
+	for _, plugin := range config.Plugins {
+		pluginInstance, exists := pluginMap[plugin.Name]
+		if !exists {
+			return fmt.Errorf("plugin '%s' not found in plugin map", plugin.Name)
+		}
 
-			if err := RegisterPlugin(iface.Name, plugin.Name, pluginInstance); err != nil {
-				return err
-			}
+		if err := RegisterPlugin(plugin.Interface, plugin.Name, pluginInstance); err != nil {
+			return err
 		}
 	}
 

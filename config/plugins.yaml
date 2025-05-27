@@ -1,16 +1,5 @@
-interfaces:
-  - name: notification
-    plugins:
-      - name: email
-        methods:
-          - Send
-          - Delete
-          - Update
-
-  - name: payment
-    plugins:
-      - name: stripe
-        methods:
-          - Charge
-          - Refund
-          - Status 
+plugins:
+  - name: email
+    interface: notification
+  - name: stripe
+    interface: payment

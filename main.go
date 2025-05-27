@@ -14,7 +14,5 @@ func main() {
 		os.Exit(1)
 	}
 	log.Println("Servers are running. Press Ctrl+C to stop.")
-	select {} // Block forever
+	select {}
 }
-
-// http://localhost:8080/api?interface=notification&plugin=email&method=Send&message=Hello

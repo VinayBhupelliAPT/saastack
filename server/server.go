@@ -78,6 +78,5 @@ func StartServers() error {
 		}
 	}()
 
-	// Block forever
 	select {}
 }

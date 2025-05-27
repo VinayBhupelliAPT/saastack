@@ -1,6 +1,6 @@
 # Plugin System with gRPC and HTTP Gateway
 
-This project implements a plugin system using gRPC for service communication and HTTP Gateway for REST API access. It provides a flexible architecture for handling notifications and payments through a plugin-based system.
+This project implements a plugin system using gRPC for service communication and HTTP Gateway for REST API access. It provides a flexible architecture for handling notifications and payments through a plugin-based system, all running on a single gRPC server.
 
 ## Prerequisites
 
@@ -56,7 +56,9 @@ This project implements a plugin system using gRPC for service communication and
 
 ## Available Services
 
-### 1. Notification Service (Port: 50051)
+All services run on a single gRPC server (Port: 50051)
+
+### 1. Notification Service
 
 #### Methods:
 - **Send**: Send a notification message
@@ -72,7 +74,7 @@ This project implements a plugin system using gRPC for service communication and
   rpc Update(UpdateRequest) returns (UpdateResponse)
   ```
 
-### 2. Payment Service (Port: 50052)
+### 2. Payment Service
 
 #### Methods:
 - **Charge**: Process a payment
@@ -90,7 +92,7 @@ This project implements a plugin system using gRPC for service communication and
 
 ## HTTP Gateway (Port: 8080)
 
-The HTTP Gateway provides REST API access to all gRPC services. Example endpoints:
+The HTTP Gateway provides REST API access to all gRPC services through a single server. Example endpoints:
 
 ### Notification Endpoints
 ```
@@ -130,10 +132,18 @@ if err != nil {
 }
 defer conn.Close()
 
-client := pb_notification.NewNotificationServiceClient(conn)
-response, err := client.Send(context.Background(), &pb_notification.SendRequest{
+// Notification service client
+notificationClient := pb_notification.NewNotificationServiceClient(conn)
+response, err := notificationClient.Send(context.Background(), &pb_notification.SendRequest{
     Message: "Hello World",
     Plugin:  "email",
+})
+
+// Payment service client
+paymentClient := pb_payment.NewPaymentServiceClient(conn)
+response, err := paymentClient.Charge(context.Background(), &pb_payment.ChargeRequest{
+    Message: "Payment for order #123",
+    Plugin:  "stripe",
 })
 ```
 
