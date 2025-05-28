@@ -1,6 +1,6 @@
 # Plugin System with gRPC and HTTP Gateway
 
-This project implements a plugin system using gRPC for service communication and HTTP Gateway for REST API access. It provides a flexible architecture for handling notifications and payments through a plugin-based system, all running on a single gRPC server.
+This project implements a configuration-driven plugin system using gRPC for service communication and HTTP Gateway for REST API access. It provides a flexible architecture for handling notifications and payments through a YAML-based plugin configuration system, all running on a single gRPC server.
 
 ## Prerequisites
 
@@ -18,23 +18,51 @@ This project implements a plugin system using gRPC for service communication and
 ```
 .
 ├── core/                    # Core plugin system implementation
-│   └── core.go             # Plugin registry and routing logic
+│   └── core.go             # gRPC server and HTTP gateway setup
+├── config/                 # Configuration files
+│   ├── interfaces.yaml     # Interface definitions
+│   └── plugins.yaml        # Plugin configurations
 ├── proto/                   # Protocol Buffer definitions
-│   ├── notification/       # Notification service definitions
-│   ├── payment/           # Payment service definitions
+│   ├── notification/       # Generated notification service files
+│   ├── payment/           # Generated payment service files
+│   ├── google/            # Google API proto files
 │   ├── notification.proto  # Notification service interface
 │   └── payment.proto      # Payment service interface
-├── server/                 # gRPC and HTTP server implementation
-│   └── server.go
 ├── plugins/               # Plugin implementations
 │   ├── email_notification.go
 │   └── stripe_payment.go
-├── interfaces/           # Interface definitions
-│   ├── notification.go
-│   └── payment.go
+├── interfaces/           # Interface definitions and servers
+│   ├── notification.go   # Notification service implementation
+│   └── payment.go        # Payment service implementation
+├── bin/                  # Compiled binaries
+│   └── server           # Main server executable
 ├── main.go              # Main application entry point
 ├── Makefile            # Build automation
-└── generate.sh         # Protocol buffer generation script
+├── generate.sh         # Protocol buffer generation script
+├── go.mod              # Go module definition
+└── go.sum              # Go module checksums
+```
+
+## Configuration System
+
+The project uses YAML-based configuration to define interfaces and plugins:
+
+### Interface Configuration (`config/interfaces.yaml`)
+```yaml
+Interfaces:
+  - name: notification
+  - name: payment
+```
+
+### Plugin Configuration (`config/plugins.yaml`)
+```yaml
+plugins:
+  - name: email
+    interface: notification
+    instance: NewEmailPlugin
+  - name: stripe
+    interface: payment
+    instance: NewStripePlugin
 ```
 
 ## Building and Running
@@ -52,6 +80,11 @@ This project implements a plugin system using gRPC for service communication and
 3. Run the server:
    ```bash
    make run
+   ```
+
+4. Or run all steps at once:
+   ```bash
+   make all
    ```
 
 ## Available Services
@@ -115,12 +148,32 @@ POST /payment/status
 # Send notification
 curl -X POST "http://localhost:8080/notification/send" \
   -H "Content-Type: application/json" \
-  -d '{"message": "Hello World", "plugin": "email"}'
+  -d '{"message": "Hello World from email notification"}'
 
-# Process payment
+# Delete notification
+curl -X POST "http://localhost:8080/notification/delete" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Delete notification with ID 123"}'
+
+# Update notification
+curl -X POST "http://localhost:8080/notification/update" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Update notification content"}'
+
+# Process payment charge
 curl -X POST "http://localhost:8080/payment/charge" \
   -H "Content-Type: application/json" \
-  -d '{"message": "Payment for order #123", "plugin": "stripe"}'
+  -d '{"message": "Charge $100 for order #123"}'
+
+# Process payment refund
+curl -X POST "http://localhost:8080/payment/refund" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Refund $50 for order #123"}'
+
+# Check payment status
+curl -X POST "http://localhost:8080/payment/status" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Status check for transaction #456"}'
 ```
 
 ### gRPC Client
@@ -132,27 +185,59 @@ if err != nil {
 }
 defer conn.Close()
 
-// Notification service client
+// Notification service client examples
 notificationClient := pb_notification.NewNotificationServiceClient(conn)
-response, err := notificationClient.Send(context.Background(), &pb_notification.SendRequest{
-    Message: "Hello World",
-    Plugin:  "email",
+
+// Send notification
+sendResponse, err := notificationClient.Send(context.Background(), &pb_notification.SendRequest{
+    Message: "Hello World from email notification",
 })
 
-// Payment service client
+// Delete notification
+deleteResponse, err := notificationClient.Delete(context.Background(), &pb_notification.DeleteRequest{
+    Message: "Delete notification with ID 123",
+})
+
+// Update notification
+updateResponse, err := notificationClient.Update(context.Background(), &pb_notification.UpdateRequest{
+    Message: "Update notification content",
+})
+
+// Payment service client examples
 paymentClient := pb_payment.NewPaymentServiceClient(conn)
-response, err := paymentClient.Charge(context.Background(), &pb_payment.ChargeRequest{
-    Message: "Payment for order #123",
-    Plugin:  "stripe",
+
+// Charge payment
+chargeResponse, err := paymentClient.Charge(context.Background(), &pb_payment.ChargeRequest{
+    Message: "Charge $100 for order #123",
+})
+
+// Refund payment
+refundResponse, err := paymentClient.Refund(context.Background(), &pb_payment.RefundRequest{
+    Message: "Refund $50 for order #123",
+})
+
+// Check payment status
+statusResponse, err := paymentClient.Status(context.Background(), &pb_payment.StatusRequest{
+    Message: "Status check for transaction #456",
 })
 ```
 
 ## Dependencies
 
-- google.golang.org/grpc v1.70.0
-- github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
-- gopkg.in/yaml.v3 v3.0.1
-- google.golang.org/protobuf v1.36.5
+- **google.golang.org/grpc** v1.70.0 - gRPC framework
+- **github.com/grpc-ecosystem/grpc-gateway/v2** v2.26.3 - HTTP gateway
+- **gopkg.in/yaml.v3** v3.0.1 - YAML configuration parsing
+- **github.com/joho/godotenv** v1.5.1 - Environment variable loading
+- **google.golang.org/protobuf** v1.36.5 - Protocol buffer support
+- **google.golang.org/genproto** - Google API proto definitions
+
+## Architecture Features
+
+- **Configuration-Driven**: Plugins and interfaces are defined in YAML configuration files
+- **Dynamic Plugin Loading**: Plugins are loaded based on configuration at runtime
+- **Unified Server**: Single gRPC server handles all services with HTTP gateway
+- **Interface Registry**: Dynamic interface registration system
+- **Plugin Registry**: Centralized plugin management per interface type
 
 ## Development
 
@@ -171,6 +256,18 @@ response, err := paymentClient.Charge(context.Background(), &pb_payment.ChargeRe
    make run
    ```
 
+4. Clean generated files:
+   ```bash
+   make clean
+   ```
+
+## Adding New Plugins
+
+1. Create a new plugin implementation in the `plugins/` directory
+2. Update `config/plugins.yaml` to include your new plugin
+3. Ensure the interface is registered in `config/interfaces.yaml`
+4. Rebuild and run the application
+
 ## Testing
 
-The server can be tested using any gRPC client or through the HTTP Gateway endpoints. Example test requests are provided in the documentation above. 
+The server can be tested using any gRPC client or through the HTTP Gateway endpoints. Example test requests are provided in the documentation above. The server automatically registers all configured plugins and makes them available through both gRPC and HTTP interfaces. 
