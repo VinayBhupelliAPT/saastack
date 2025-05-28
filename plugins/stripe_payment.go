@@ -32,7 +32,6 @@ func (s *StripePlugin) Charge(data map[string]string) string {
 	if s.notificationClient != nil {
 		req := &pb_notification.SendRequest{
 			Message: "Payment successful: " + msg,
-			Plugin:  "email",
 		}
 		_, err := s.notificationClient.Send(context.Background(), req)
 		if err != nil {
@@ -50,7 +49,6 @@ func (s *StripePlugin) Refund(data map[string]string) string {
 	if s.notificationClient != nil {
 		req := &pb_notification.SendRequest{
 			Message: "Refund processed: " + msg,
-			Plugin:  "email",
 		}
 		_, err := s.notificationClient.Send(context.Background(), req)
 		if err != nil {

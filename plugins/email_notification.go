@@ -6,6 +6,10 @@ import (
 
 type EmailPlugin struct{}
 
+func NewEmailPlugin() *EmailPlugin {
+	return &EmailPlugin{}
+}
+
 func (e *EmailPlugin) Send(data map[string]string) string {
 	msg := data["message"]
 	fmt.Println("EmailPlugin sending:", msg)

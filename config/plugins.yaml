@@ -1,5 +1,7 @@
 plugins:
   - name: email
     interface: notification
+    instance: NewEmailPlugin
   - name: stripe
     interface: payment
+    instance: NewStripePlugin

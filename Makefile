@@ -14,14 +14,14 @@ clean:
 
 generate:
 	@echo "Generating protobuf code..."
-	@chmod +x generate.sh
+	@chmod +x ./generate.sh
 	@./generate.sh
 
 build:
 	@echo "Building application..."
 	@go build -o bin/server main.go
 
-run: build
+run:
 	@echo "Running server..."
 	@./bin/server
 

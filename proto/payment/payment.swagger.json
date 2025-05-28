@@ -138,9 +138,6 @@
       "properties": {
         "message": {
           "type": "string"
-        },
-        "plugin": {
-          "type": "string"
         }
       }
     },
@@ -157,9 +154,6 @@
       "properties": {
         "message": {
           "type": "string"
-        },
-        "plugin": {
-          "type": "string"
         }
       }
     },
@@ -175,9 +169,6 @@
       "type": "object",
       "properties": {
         "message": {
-          "type": "string"
-        },
-        "plugin": {
           "type": "string"
         }
       }

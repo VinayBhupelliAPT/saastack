@@ -1,0 +1,3 @@
+Interfaces:
+  - name: notification
+  - name: payment

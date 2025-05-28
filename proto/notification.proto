@@ -28,7 +28,6 @@ service NotificationService {
 
 message SendRequest {
   string message = 1;
-  string plugin = 2; 
 }
 
 message SendResponse {
@@ -37,7 +36,6 @@ message SendResponse {
 
 message DeleteRequest {
   string message = 1;
-  string plugin = 2;
 }
 
 message DeleteResponse {
@@ -46,7 +44,6 @@ message DeleteResponse {
 
 message UpdateRequest {
   string message = 1;
-  string plugin = 2; 
 }
 
 message UpdateResponse {

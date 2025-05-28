@@ -27,8 +27,7 @@ service PaymentService {
 }
 
 message ChargeRequest {
-  string message = 1;
-  string plugin = 2; 
+  string message = 1; 
 }
 
 message ChargeResponse {
@@ -37,7 +36,6 @@ message ChargeResponse {
 
 message RefundRequest {
   string message = 1;
-  string plugin = 2;
 }
 
 message RefundResponse {
@@ -46,7 +44,6 @@ message RefundResponse {
 
 message StatusRequest {
   string message = 1;
-  string plugin = 2; 
 }
 
 message StatusResponse {

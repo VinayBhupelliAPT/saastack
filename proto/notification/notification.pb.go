@@ -25,7 +25,6 @@ const (
 type SendRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	Plugin        string                 `protobuf:"bytes,2,opt,name=plugin,proto3" json:"plugin,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -63,13 +62,6 @@ func (*SendRequest) Descriptor() ([]byte, []int) {
 func (x *SendRequest) GetMessage() string {
 	if x != nil {
 		return x.Message
-	}
-	return ""
-}
-
-func (x *SendRequest) GetPlugin() string {
-	if x != nil {
-		return x.Plugin
 	}
 	return ""
 }
@@ -121,7 +113,6 @@ func (x *SendResponse) GetResult() string {
 type DeleteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	Plugin        string                 `protobuf:"bytes,2,opt,name=plugin,proto3" json:"plugin,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -159,13 +150,6 @@ func (*DeleteRequest) Descriptor() ([]byte, []int) {
 func (x *DeleteRequest) GetMessage() string {
 	if x != nil {
 		return x.Message
-	}
-	return ""
-}
-
-func (x *DeleteRequest) GetPlugin() string {
-	if x != nil {
-		return x.Plugin
 	}
 	return ""
 }
@@ -217,7 +201,6 @@ func (x *DeleteResponse) GetResult() string {
 type UpdateRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	Plugin        string                 `protobuf:"bytes,2,opt,name=plugin,proto3" json:"plugin,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -255,13 +238,6 @@ func (*UpdateRequest) Descriptor() ([]byte, []int) {
 func (x *UpdateRequest) GetMessage() string {
 	if x != nil {
 		return x.Message
-	}
-	return ""
-}
-
-func (x *UpdateRequest) GetPlugin() string {
-	if x != nil {
-		return x.Plugin
 	}
 	return ""
 }
@@ -314,20 +290,17 @@ var File_notification_proto protoreflect.FileDescriptor
 
 const file_notification_proto_rawDesc = "" +
 	"\n" +
-	"\x12notification.proto\x12\x05proto\x1a\x1cgoogle/api/annotations.proto\"?\n" +
+	"\x12notification.proto\x12\x05proto\x1a\x1cgoogle/api/annotations.proto\"'\n" +
 	"\vSendRequest\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\x12\x16\n" +
-	"\x06plugin\x18\x02 \x01(\tR\x06plugin\"&\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"&\n" +
 	"\fSendResponse\x12\x16\n" +
-	"\x06result\x18\x01 \x01(\tR\x06result\"A\n" +
+	"\x06result\x18\x01 \x01(\tR\x06result\")\n" +
 	"\rDeleteRequest\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\x12\x16\n" +
-	"\x06plugin\x18\x02 \x01(\tR\x06plugin\"(\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"(\n" +
 	"\x0eDeleteResponse\x12\x16\n" +
-	"\x06result\x18\x01 \x01(\tR\x06result\"A\n" +
+	"\x06result\x18\x01 \x01(\tR\x06result\")\n" +
 	"\rUpdateRequest\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\x12\x16\n" +
-	"\x06plugin\x18\x02 \x01(\tR\x06plugin\"(\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"(\n" +
 	"\x0eUpdateResponse\x12\x16\n" +
 	"\x06result\x18\x01 \x01(\tR\x06result2\x95\x02\n" +
 	"\x13NotificationService\x12N\n" +
