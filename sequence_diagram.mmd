@@ -1,0 +1,79 @@
+sequenceDiagram
+    participant Client as HTTP Client
+    participant HTTPGateway as HTTP Gateway<br/>(core - Port 8080)
+    participant GRPCServer as gRPC Server<br/>(core - Port 50051)
+    participant PaymentSvc as Payment Service<br/>(Registered Handler)
+    participant PaymentIntf as Payment Interface<br/>(payment.go)
+    participant StripePlugin as Stripe Plugin<br/>(stripe_payment.go)
+    participant NotificationSvc as Notification Service<br/>(Registered Handler)
+    participant NotificationIntf as Notification Interface<br/>(notification.go)
+    participant EmailPlugin as Email Plugin<br/>(email_notification.go)
+    participant Config as Environment Config<br/>(.env)
+
+    Note over Client, EmailPlugin: Stripe Payment Charge Flow with Core Layer
+
+    %% 1. Client initiates payment request
+    Client->>HTTPGateway: POST /payment/charge<br/>{"message": "Charge $100 for order #123"}
+    
+    %% 2. HTTP Gateway (core) converts REST to gRPC and forwards to gRPC Server (core)
+    HTTPGateway->>GRPCServer: gRPC Charge Request<br/>ChargeRequest{message: "Charge $100..."}
+    
+    %% 3. gRPC Server (core) routes to registered Payment Service
+    GRPCServer->>PaymentSvc: Route to PaymentServiceServer<br/>Charge(ctx, ChargeRequest)
+    
+    %% 4. Payment Service delegates to Payment Interface
+    PaymentSvc->>PaymentIntf: Charge(ctx, ChargeRequest)
+    
+    %% 5. Payment Interface loads configuration
+    PaymentIntf->>Config: Load .env file<br/>Get PAYMENT_PLUGIN
+    Config-->>PaymentIntf: PAYMENT_PLUGIN="stripe"
+    
+    %% 6. Payment Interface calls registered Stripe plugin
+    PaymentIntf->>StripePlugin: Charge(map[string]string)<br/>{"message": "Charge $100..."}
+    
+    %% 7. Stripe Plugin processes payment
+    Note over StripePlugin: Process Stripe Payment<br/>Business Logic
+    StripePlugin->>StripePlugin: fmt.Println("StripePlugin charging...")
+    
+    %% 8. Stripe Plugin sends notification via gRPC (goes through core again)
+    StripePlugin->>GRPCServer: gRPC Send Request<br/>SendRequest{message: "Payment successful: ..."}
+    
+    %% 9. gRPC Server (core) routes to registered Notification Service
+    GRPCServer->>NotificationSvc: Route to NotificationServiceServer<br/>Send(ctx, SendRequest)
+    
+    %% 10. Notification Service delegates to Notification Interface
+    NotificationSvc->>NotificationIntf: Send(ctx, SendRequest)
+    
+    %% 11. Notification Interface loads configuration
+    NotificationIntf->>Config: Load .env file<br/>Get NOTIFICATION_PLUGIN
+    Config-->>NotificationIntf: NOTIFICATION_PLUGIN="email"
+    
+    %% 12. Notification Interface calls Email plugin
+    NotificationIntf->>EmailPlugin: Send(map[string]string)<br/>{"message": "Payment successful: ..."}
+    
+    %% 13. Email Plugin sends notification
+    Note over EmailPlugin: Send Email Notification<br/>Business Logic
+    EmailPlugin->>EmailPlugin: fmt.Println("EmailPlugin sending...")
+    EmailPlugin-->>NotificationIntf: "EmailPlugin sent: Payment successful..."
+    
+    %% 14. Response chain back up through Notification Service
+    NotificationIntf-->>NotificationSvc: SendResponse{result: "EmailPlugin sent..."}
+    NotificationSvc-->>GRPCServer: gRPC SendResponse
+    GRPCServer-->>StripePlugin: Success (async)
+    
+    %% 15. Stripe Plugin returns result to Payment Interface
+    StripePlugin-->>PaymentIntf: "StripePlugin charged: Charge $100..."
+    
+    %% 16. Payment Interface returns response to Payment Service
+    PaymentIntf-->>PaymentSvc: ChargeResponse{result: "StripePlugin charged..."}
+    
+    %% 17. Payment Service returns to gRPC Server (core)
+    PaymentSvc-->>GRPCServer: gRPC ChargeResponse
+    
+    %% 18. gRPC Server (core) returns to HTTP Gateway (core)
+    GRPCServer-->>HTTPGateway: gRPC ChargeResponse
+    
+    %% 19. HTTP Gateway (core) returns to Client
+    HTTPGateway-->>Client: HTTP 200 OK<br/>{"result": "StripePlugin charged: Charge $100..."}
+
+    Note over Client, EmailPlugin: Payment processed successfully with notification sent

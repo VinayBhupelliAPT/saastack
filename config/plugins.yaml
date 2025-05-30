@@ -2,6 +2,9 @@ plugins:
   - name: email
     interface: notification
     instance: NewEmailPlugin
+    deployment: Microservice
+    source: localhost:50052
   - name: stripe
     interface: payment
     instance: NewStripePlugin
+    deployment: Monolithic

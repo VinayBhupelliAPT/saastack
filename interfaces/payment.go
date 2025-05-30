@@ -2,6 +2,7 @@ package interfaces
 
 import (
 	"context"
+	"fmt"
 	"os"
 	pb_payment "sample/proto/payment"
 
@@ -11,12 +12,17 @@ import (
 const PaymentInterfaceName = "payment"
 
 type PaymentPlugin interface {
-	Charge(data map[string]string) string
-	Refund(data map[string]string) string
-	Status(data map[string]string) string
+	Charge(ctx context.Context, req *pb_payment.ChargeRequest) (*pb_payment.ChargeResponse, error)
+	Refund(ctx context.Context, req *pb_payment.RefundRequest) (*pb_payment.RefundResponse, error)
+	Status(ctx context.Context, req *pb_payment.StatusRequest) (*pb_payment.StatusResponse, error)
+}
+type PaymentPluginDetails struct {
+	Name   string
+	Plugin PaymentPlugin
+	Client pb_payment.PaymentServiceClient
 }
 
-var PaymentPluginsRegistery = make(map[string]PaymentPlugin)
+var PaymentPluginsRegistery = make(map[string]PaymentPluginDetails)
 
 type PaymentServer struct {
 	pb_payment.UnimplementedPaymentServiceServer
@@ -26,32 +32,63 @@ func NewPaymentServer() *PaymentServer {
 	return &PaymentServer{}
 }
 
-func RegisterPaymentPlugins(pluginMap map[string]interface{}) {
-	for name, plugin := range pluginMap {
-		PaymentPluginsRegistery[name] = plugin.(PaymentPlugin)
-	}
+func RegisterPaymentPlugin(details PaymentPluginDetails) {
+	PaymentPluginsRegistery[details.Name] = details
 }
 
 func (s *PaymentServer) Charge(ctx context.Context, req *pb_payment.ChargeRequest) (*pb_payment.ChargeResponse, error) {
 	godotenv.Load(".env")
 	defaultPlugin := os.Getenv("PAYMENT_PLUGIN")
-	handler := PaymentPluginsRegistery[defaultPlugin]
-	result := handler.Charge(map[string]string{"message": req.Message})
-	return &pb_payment.ChargeResponse{Result: result}, nil
+	details := PaymentPluginsRegistery[defaultPlugin]
+	if details.Plugin != nil {
+		result, err := details.Plugin.Charge(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+
+	if details.Client != nil {
+		return details.Client.Charge(ctx, req)
+	}
+
+	return nil, fmt.Errorf("no valid plugin or client found for plugin: %s", defaultPlugin)
 }
 
 func (s *PaymentServer) Refund(ctx context.Context, req *pb_payment.RefundRequest) (*pb_payment.RefundResponse, error) {
 	godotenv.Load(".env")
 	defaultPlugin := os.Getenv("PAYMENT_PLUGIN")
-	handler := PaymentPluginsRegistery[defaultPlugin]
-	result := handler.Refund(map[string]string{"message": req.Message})
-	return &pb_payment.RefundResponse{Result: result}, nil
+	details := PaymentPluginsRegistery[defaultPlugin]
+	if details.Plugin != nil {
+		result, err := details.Plugin.Refund(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+
+	if details.Client != nil {
+		return details.Client.Refund(ctx, req)
+	}
+
+	return nil, fmt.Errorf("no valid plugin or client found for plugin: %s", defaultPlugin)
 }
 
 func (s *PaymentServer) Status(ctx context.Context, req *pb_payment.StatusRequest) (*pb_payment.StatusResponse, error) {
 	godotenv.Load(".env")
 	defaultPlugin := os.Getenv("PAYMENT_PLUGIN")
-	handler := PaymentPluginsRegistery[defaultPlugin]
-	result := handler.Status(map[string]string{"message": req.Message})
-	return &pb_payment.StatusResponse{Result: result}, nil
+	details := PaymentPluginsRegistery[defaultPlugin]
+	if details.Plugin != nil {
+		result, err := details.Plugin.Status(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+
+	if details.Client != nil {
+		return details.Client.Status(ctx, req)
+	}
+
+	return nil, fmt.Errorf("no valid plugin or client found for plugin: %s", defaultPlugin)
 }

@@ -15,15 +15,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Register Interfaces
-var InterfaceRegistry = make(map[string]bool)
-
-func RegisterInterfaces(interfaceList []string) {
-	for _, iface := range interfaceList {
-		InterfaceRegistry[iface] = true
-	}
-}
-
 type Interface struct {
 	Name string `yaml:"name"`
 }
@@ -33,9 +24,11 @@ type InterfaceConfig struct {
 }
 
 type Plugin struct {
-	Name      string `yaml:"name"`
-	Interface string `yaml:"interface"`
-	Instance  string `yaml:"instance"`
+	Name       string `yaml:"name"`
+	Interface  string `yaml:"interface"`
+	Instance   string `yaml:"instance"`
+	Deployment string `yaml:"deployment"`
+	Source     string `yaml:"source"`
 }
 
 type PluginConfig struct {
@@ -71,67 +64,100 @@ func LoadPluginConfig(filename string) (*PluginConfig, error) {
 	return &config, nil
 }
 
+// Register Interfaces
+var InterfaceRegistry = make(map[string]bool)
+
 func main() {
-	// Register Interfaces in core
 	interfaceConfig, err := LoadInterfaceConfig("config/interfaces.yaml")
 	if err != nil {
 		fmt.Printf("Error loading interface config: %v\n", err)
 		return
 	}
-	interfaceList := make([]string, 0)
-	for _, iface := range interfaceConfig.Interfaces {
-		interfaceList = append(interfaceList, iface.Name)
-	}
-	RegisterInterfaces(interfaceList)
-
-	// Register Plugins in interfaces
 	pluginConfig, err := LoadPluginConfig("config/plugins.yaml")
 	if err != nil {
 		fmt.Printf("Error loading plugin config: %v\n", err)
 		return
 	}
-	notificationPluginsMap := make(map[string]interface{})
-	paymentPluginsMap := make(map[string]interface{})
-
-	for _, p := range pluginConfig.Plugins {
-		if !InterfaceRegistry[p.Interface] {
-			fmt.Printf("Interface %s not found in interface registry\n", p.Interface)
-			continue
-		}
-		switch p.Instance {
-		case "NewEmailPlugin":
-			notificationPluginsMap[p.Name] = plugins.NewEmailPlugin()
-		case "NewStripePlugin":
-			paymentPluginsMap[p.Name] = plugins.NewStripePlugin()
-		default:
-			fmt.Printf("Unknown plugin instance: %s", p.Instance)
-		}
-	}
-	interfaces.RegisterNotificationPlugins(notificationPluginsMap)
-	interfaces.RegisterPaymentPlugins(paymentPluginsMap)
-
-	// Register Services
-	notificationServer := interfaces.NewNotificationServer()
-	paymentServer := interfaces.NewPaymentServer()
+	// get gRPC and HTTP gateway
 	s := core.GetGRPCServer()
-	pb_notification.RegisterNotificationServiceServer(s, notificationServer)
-	pb_payment.RegisterPaymentServiceServer(s, paymentServer)
-
-	// Start the gRPC server from core
-	go core.StartGRPCServer(s)
-
-	// Start the HTTP gateway from core
 	mux := core.GetHTTPGateway()
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	pb_notification.RegisterNotificationServiceHandlerFromEndpoint(
-		ctx, mux, "localhost:50051", opts,
-	)
-	pb_payment.RegisterPaymentServiceHandlerFromEndpoint(
-		ctx, mux, "localhost:50051", opts,
-	)
-	core.StartHTTPGateway(mux)
 
+	// Register Interfaces
+	interfaceList := make(map[string]bool)
+	for _, iface := range interfaceConfig.Interfaces {
+		interfaceList[iface.Name] = true
+		// Register Services
+		switch iface.Name {
+		case "notification":
+			notificationServer := interfaces.NewNotificationServer()
+			pb_notification.RegisterNotificationServiceServer(s, notificationServer)
+			pb_notification.RegisterNotificationServiceHandlerFromEndpoint(
+				ctx, mux, "localhost:50051", opts,
+			)
+		case "payment":
+			paymentServer := interfaces.NewPaymentServer()
+			pb_payment.RegisterPaymentServiceServer(s, paymentServer)
+			pb_payment.RegisterPaymentServiceHandlerFromEndpoint(
+				ctx, mux, "localhost:50051", opts,
+			)
+		}
+	}
+
+	// Register Plugins in interfaces
+	for _, p := range pluginConfig.Plugins {
+		switch p.Interface {
+		case "notification":
+			registerNotification(p)
+		case "payment":
+			registerPayment(p)
+		default:
+			fmt.Printf("Unknown plugin instance: %s", p.Instance)
+		}
+	}
+
+	// Start the HTTP gateway from core
+	go core.StartHTTPGateway(mux)
+	// Start the gRPC server
+	core.StartGRPCServer(s)
+}
+func registerNotification(p Plugin) {
+	var data interfaces.NotificationPluginDetails
+	data.Name = p.Name
+	if p.Deployment == "Microservice" {
+		if p.Name == "email" {
+			go func() {
+				plugins.StartEmailNotificationMicroservice("50052")
+			}()
+		}
+		conn, err := grpc.NewClient(p.Source, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			fmt.Printf("Failed to connect to notification service: %v\n", err)
+			return
+		}
+		client := pb_notification.NewNotificationServiceClient(conn)
+		data.Client = client
+	} else {
+		data.Plugin = plugins.NewEmailPlugin()
+	}
+	interfaces.RegisterNotificationPlugin(data)
+}
+func registerPayment(p Plugin) {
+	var data interfaces.PaymentPluginDetails
+	data.Name = p.Name
+	if p.Deployment == "Microservice" {
+		conn, err := grpc.NewClient(p.Source, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			fmt.Printf("Failed to connect to payment service: %v\n", err)
+			return
+		}
+		client := pb_payment.NewPaymentServiceClient(conn)
+		data.Client = client
+	} else {
+		data.Plugin = plugins.NewStripePlugin()
+	}
+	interfaces.RegisterPaymentPlugin(data)
 }
