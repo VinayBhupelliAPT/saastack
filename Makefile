@@ -5,12 +5,10 @@ all: clean generate build run
 clean:
 	@echo "Cleaning..."
 	@rm -rf bin/
-	@rm -rf proto/notification/*.pb.go
-	@rm -rf proto/notification/*.gw.go
-	@rm -rf proto/notification/*.swagger.json
-	@rm -rf proto/payment/*.pb.go
-	@rm -rf proto/payment/*.gw.go
-	@rm -rf proto/payment/*.swagger.json
+	@rm -rf interfaces/notification/proto/*.pb.go
+	@rm -rf interfaces/notification/proto/*.gw.go
+	@rm -rf interfaces/payment/proto/*.pb.go
+	@rm -rf interfaces/payment/proto/*.gw.go
 
 generate:
 	@echo "Generating protobuf code..."

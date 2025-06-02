@@ -1,21 +1,19 @@
 #!/bin/bash
 
-cd proto
-
 echo "Generating code for notification service..."
 protoc \
-  --go_out=notification --go_opt=paths=source_relative \
-  --go-grpc_out=notification --go-grpc_opt=paths=source_relative \
-  --grpc-gateway_out=notification --grpc-gateway_opt=paths=source_relative \
-  --openapiv2_out=notification \
-  notification.proto
+  -Iinterfaces \
+  --go_out=interfaces/notification/proto --go_opt=paths=import \
+  --go-grpc_out=interfaces/notification/proto --go-grpc_opt=paths=import \
+  --grpc-gateway_out=interfaces/notification/proto --grpc-gateway_opt=paths=import \
+  interfaces/notification/notification.proto
 
 echo "Generating code for payment service..."
 protoc \
-  --go_out=payment --go_opt=paths=source_relative \
-  --go-grpc_out=payment --go-grpc_opt=paths=source_relative \
-  --grpc-gateway_out=payment --grpc-gateway_opt=paths=source_relative \
-  --openapiv2_out=payment \
-  payment.proto
+  -Iinterfaces \
+  --go_out=interfaces/payment/proto --go_opt=paths=import \
+  --go-grpc_out=interfaces/payment/proto --go-grpc_opt=paths=import \
+  --grpc-gateway_out=interfaces/payment/proto --grpc-gateway_opt=paths=import \
+  interfaces/payment/payment.proto
 
 echo "Code generation completed successfully."

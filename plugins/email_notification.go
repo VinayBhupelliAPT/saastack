@@ -3,11 +3,7 @@ package plugins
 import (
 	"context"
 	"fmt"
-	"log"
-	"net"
-	pb_notification "sample/proto/notification"
-	
-	"google.golang.org/grpc"
+	pb_notification "saastack/interfaces/notification/proto"
 )
 
 type EmailPlugin struct {
@@ -34,20 +30,4 @@ func (e *EmailPlugin) Update(ctx context.Context, req *pb_notification.UpdateReq
 	msg := req.Message
 	fmt.Println("EmailPlugin updating:", msg)
 	return &pb_notification.UpdateResponse{Result: "EmailPlugin updated: " + msg}, nil
-}
-
-func StartEmailNotificationMicroservice(port string) {
-	lis, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		log.Fatalf("Failed to listen on port %s: %v", port, err)
-	}
-
-	s := grpc.NewServer()
-	emailServer := NewEmailPlugin()
-	pb_notification.RegisterNotificationServiceServer(s, emailServer)
-
-	fmt.Printf("Email Notification microservice started on port %s\n", port)
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve email notification microservice: %v", err)
-	}
 }

@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sample/core"
-	"sample/interfaces"
-	"sample/plugins"
-	pb_notification "sample/proto/notification"
-	pb_payment "sample/proto/payment"
+	"saastack/core"
+	notificationService "saastack/interfaces/notification"
+	pb_notification "saastack/interfaces/notification/proto"
+	paymentService "saastack/interfaces/payment"
+	pb_payment "saastack/interfaces/payment/proto"
+	"saastack/plugins"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -93,13 +94,13 @@ func main() {
 		// Register Services
 		switch iface.Name {
 		case "notification":
-			notificationServer := interfaces.NewNotificationServer()
+			notificationServer := notificationService.NewNotificationService()
 			pb_notification.RegisterNotificationServiceServer(s, notificationServer)
 			pb_notification.RegisterNotificationServiceHandlerFromEndpoint(
 				ctx, mux, "localhost:50051", opts,
 			)
 		case "payment":
-			paymentServer := interfaces.NewPaymentServer()
+			paymentServer := paymentService.NewPaymentService()
 			pb_payment.RegisterPaymentServiceServer(s, paymentServer)
 			pb_payment.RegisterPaymentServiceHandlerFromEndpoint(
 				ctx, mux, "localhost:50051", opts,
@@ -125,39 +126,14 @@ func main() {
 	core.StartGRPCServer(s)
 }
 func registerNotification(p Plugin) {
-	var data interfaces.NotificationPluginDetails
+	var data notificationService.NotificationPluginDetails
 	data.Name = p.Name
-	if p.Deployment == "Microservice" {
-		if p.Name == "email" {
-			go func() {
-				plugins.StartEmailNotificationMicroservice("50052")
-			}()
-		}
-		conn, err := grpc.NewClient(p.Source, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			fmt.Printf("Failed to connect to notification service: %v\n", err)
-			return
-		}
-		client := pb_notification.NewNotificationServiceClient(conn)
-		data.Client = client
-	} else {
-		data.Plugin = plugins.NewEmailPlugin()
-	}
-	interfaces.RegisterNotificationPlugin(data)
+	data.Plugin = plugins.NewEmailPlugin()
+	notificationService.RegisterNotificationPlugin(data)
 }
 func registerPayment(p Plugin) {
-	var data interfaces.PaymentPluginDetails
+	var data paymentService.PaymentPluginDetails
 	data.Name = p.Name
-	if p.Deployment == "Microservice" {
-		conn, err := grpc.NewClient(p.Source, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			fmt.Printf("Failed to connect to payment service: %v\n", err)
-			return
-		}
-		client := pb_payment.NewPaymentServiceClient(conn)
-		data.Client = client
-	} else {
-		data.Plugin = plugins.NewStripePlugin()
-	}
-	interfaces.RegisterPaymentPlugin(data)
+	data.Plugin = plugins.NewStripePlugin()
+	paymentService.RegisterPaymentPlugin(data)
 }

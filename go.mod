@@ -1,4 +1,4 @@
-module sample
+module saastack
 
 go 1.23.0
 
