@@ -2,113 +2,94 @@ package notification
 
 import (
 	"context"
-	"fmt"
 	"os"
-	pb_notification "saastack/interfaces/notification/proto"
 
-	"github.com/joho/godotenv"	
+	"saastack/core"
+	pb "saastack/interfaces/notification/proto"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/joho/godotenv"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-const InterfaceName = "notification"
-
-var NotificationPluginsRegistery = make(map[string]NotificationPluginDetails)
-
-type NotificationPlugin interface {
-	Send(ctx context.Context, req *pb_notification.SendRequest) (*pb_notification.SendResponse, error)
-	Delete(ctx context.Context, req *pb_notification.DeleteRequest) (*pb_notification.DeleteResponse, error)
-	Update(ctx context.Context, req *pb_notification.UpdateRequest) (*pb_notification.UpdateResponse, error)
+// NotificationServiceInterface defines the interface for notification service
+type NotificationServiceInterface interface {
+	pb.NotificationServiceServer
 }
+
+// Registry interface for plugin management
+type PluginRegistry interface {
+	GetPlugin(interfaceName, pluginName string) (interface{}, bool)
+}
+
+// NotificationService implements the NotificationServiceServer interface
 type NotificationService struct {
-	pb_notification.UnimplementedNotificationServiceServer
+	pb.UnimplementedNotificationServiceServer
+	registry PluginRegistry
 }
 
-func NewNotificationService() *NotificationService {
-	return &NotificationService{}
+// NewNotificationService creates a new instance of NotificationService
+func NewNotificationService(registry PluginRegistry) *NotificationService {
+	return &NotificationService{
+		registry: registry,
+	}
 }
 
-type NotificationPluginDetails struct {
-	Name   string
-	Plugin NotificationPlugin
-	Client pb_notification.NotificationServiceClient
+func init() {
+	service := NewNotificationService(core.GlobalRegistry)
+	core.GlobalRegistry.RegisterService("notification", service)
 }
 
-func RegisterNotificationPlugin(details NotificationPluginDetails) {
-	NotificationPluginsRegistery[details.Name] = details
+// RegisterGRPC registers the service with gRPC server
+func (s *NotificationService) RegisterGRPC(server *grpc.Server) {
+	pb.RegisterNotificationServiceServer(server, s)
 }
 
-func (s *NotificationService) Send(ctx context.Context, req *pb_notification.SendRequest) (*pb_notification.SendResponse, error) {
+// RegisterHTTP registers the service with HTTP gateway
+func (s *NotificationService) RegisterHTTP(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error {
+	return pb.RegisterNotificationServiceHandlerFromEndpoint(ctx, mux, endpoint, opts)
+}
+
+func (s *NotificationService) Send(ctx context.Context, req *pb.SendRequest) (*pb.SendResponse, error) {
 	godotenv.Load(".env")
-	defaultPlugin := os.Getenv("NOTIFICATION_PLUGIN")
-	var details NotificationPluginDetails
+	pluginName := os.Getenv("NOTIFICATION_PLUGIN")
+
 	if req.Plugin != "" {
-		details = NotificationPluginsRegistery[req.Plugin]
-	} else {
-		details = NotificationPluginsRegistery[defaultPlugin]
+		pluginName = req.Plugin
 	}
-
-	if details.Plugin != nil {
-		result, err := details.Plugin.Send(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Println(result)
-		return result, nil
+	plugin, ok := s.registry.GetPlugin("notification", pluginName)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "plugin not found")
 	}
-
-	if details.Client != nil {
-		return details.Client.Send(ctx, req)
-	}
-
-	return nil, fmt.Errorf("no valid plugin or client found for plugin: %s", defaultPlugin)
+	return plugin.(NotificationServiceInterface).Send(ctx, req)
 }
 
-func (s *NotificationService) Delete(ctx context.Context, req *pb_notification.DeleteRequest) (*pb_notification.DeleteResponse, error) {
+func (s *NotificationService) Delete(ctx context.Context, req *pb.DeleteRequest) (*pb.DeleteResponse, error) {
 	godotenv.Load(".env")
-	defaultPlugin := os.Getenv("NOTIFICATION_PLUGIN")
-	var details NotificationPluginDetails
+	pluginName := os.Getenv("NOTIFICATION_PLUGIN")
+
 	if req.Plugin != "" {
-		details = NotificationPluginsRegistery[req.Plugin]
-	} else {
-		details = NotificationPluginsRegistery[defaultPlugin]
+		pluginName = req.Plugin
 	}
-
-	if details.Plugin != nil {
-		result, err := details.Plugin.Delete(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+	plugin, ok := s.registry.GetPlugin("notification", pluginName)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "plugin not found")
 	}
-
-	if details.Client != nil {
-		return details.Client.Delete(ctx, req)
-	}
-
-	return nil, fmt.Errorf("no valid plugin or client found for plugin: %s", defaultPlugin)
+	return plugin.(NotificationServiceInterface).Delete(ctx, req)
 }
 
-func (s *NotificationService) Update(ctx context.Context, req *pb_notification.UpdateRequest) (*pb_notification.UpdateResponse, error) {
+func (s *NotificationService) Update(ctx context.Context, req *pb.UpdateRequest) (*pb.UpdateResponse, error) {
 	godotenv.Load(".env")
-	defaultPlugin := os.Getenv("NOTIFICATION_PLUGIN")
-	var details NotificationPluginDetails
+	pluginName := os.Getenv("NOTIFICATION_PLUGIN")
+
 	if req.Plugin != "" {
-		details = NotificationPluginsRegistery[req.Plugin]
-	} else {
-		details = NotificationPluginsRegistery[defaultPlugin]
+		pluginName = req.Plugin
 	}
-
-	if details.Plugin != nil {
-		result, err := details.Plugin.Update(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+	plugin, ok := s.registry.GetPlugin("notification", pluginName)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "plugin not found")
 	}
-
-	if details.Client != nil {
-		return details.Client.Update(ctx, req)
-	}
-
-	return nil, fmt.Errorf("no valid plugin or client found for plugin: %s", defaultPlugin)
-
+	return plugin.(NotificationServiceInterface).Update(ctx, req)
 }

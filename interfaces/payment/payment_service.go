@@ -2,108 +2,94 @@ package payment
 
 import (
 	"context"
-	"fmt"
 	"os"
-	pb_payment "saastack/interfaces/payment/proto"
 
+	"saastack/core"
+	pb "saastack/interfaces/payment/proto"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/joho/godotenv"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-const PaymentInterfaceName = "payment"
-
-type PaymentPlugin interface {
-	Charge(ctx context.Context, req *pb_payment.ChargeRequest) (*pb_payment.ChargeResponse, error)
-	Refund(ctx context.Context, req *pb_payment.RefundRequest) (*pb_payment.RefundResponse, error)
-	Status(ctx context.Context, req *pb_payment.StatusRequest) (*pb_payment.StatusResponse, error)
-}
-type PaymentPluginDetails struct {
-	Name   string
-	Plugin PaymentPlugin
-	Client pb_payment.PaymentServiceClient
+// PaymentServiceInterface defines the interface for payment service
+type PaymentServiceInterface interface {
+	pb.PaymentServiceServer
 }
 
-var PaymentPluginsRegistery = make(map[string]PaymentPluginDetails)
-
-func RegisterPaymentPlugin(details PaymentPluginDetails) {
-	PaymentPluginsRegistery[details.Name] = details
+// Registry interface for plugin management
+type PluginRegistry interface {
+	GetPlugin(interfaceName, pluginName string) (interface{}, bool)
 }
+
+// PaymentService implements the PaymentServiceServer interface
 type PaymentService struct {
-	pb_payment.UnimplementedPaymentServiceServer
+	pb.UnimplementedPaymentServiceServer
+	registry PluginRegistry
 }
 
-func NewPaymentService() *PaymentService {
-	return &PaymentService{}
+// NewPaymentService creates a new instance of PaymentService
+func NewPaymentService(registry PluginRegistry) *PaymentService {
+	return &PaymentService{
+		registry: registry,
+	}
 }
 
+func init() {
+	service := NewPaymentService(core.GlobalRegistry)
+	core.GlobalRegistry.RegisterService("payment", service)
+}
 
-func (s *PaymentService) Charge(ctx context.Context, req *pb_payment.ChargeRequest) (*pb_payment.ChargeResponse, error) {
+// RegisterGRPC registers the service with gRPC server
+func (s *PaymentService) RegisterGRPC(server *grpc.Server) {
+	pb.RegisterPaymentServiceServer(server, s)
+}
+
+// RegisterHTTP registers the service with HTTP gateway
+func (s *PaymentService) RegisterHTTP(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error {
+	return pb.RegisterPaymentServiceHandlerFromEndpoint(ctx, mux, endpoint, opts)
+}
+
+func (s *PaymentService) Charge(ctx context.Context, req *pb.ChargeRequest) (*pb.ChargeResponse, error) {
 	godotenv.Load(".env")
-	defaultPlugin := os.Getenv("PAYMENT_PLUGIN")
-	var details PaymentPluginDetails
+	pluginName := os.Getenv("PAYMENT_PLUGIN")
+
 	if req.Plugin != "" {
-		details = PaymentPluginsRegistery[req.Plugin]
-	} else {
-		details = PaymentPluginsRegistery[defaultPlugin]
+		pluginName = req.Plugin
 	}
-	if details.Plugin != nil {
-		result, err := details.Plugin.Charge(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+	plugin, ok := s.registry.GetPlugin("payment", pluginName)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "plugin not found")
 	}
-
-	if details.Client != nil {
-		return details.Client.Charge(ctx, req)
-	}
-
-	return nil, fmt.Errorf("no valid plugin or client found for plugin: %s", defaultPlugin)
+	return plugin.(PaymentServiceInterface).Charge(ctx, req)
 }
 
-func (s *PaymentService) Refund(ctx context.Context, req *pb_payment.RefundRequest) (*pb_payment.RefundResponse, error) {
+func (s *PaymentService) Refund(ctx context.Context, req *pb.RefundRequest) (*pb.RefundResponse, error) {
 	godotenv.Load(".env")
-	defaultPlugin := os.Getenv("PAYMENT_PLUGIN")
-	var details PaymentPluginDetails
+	pluginName := os.Getenv("PAYMENT_PLUGIN")
+
 	if req.Plugin != "" {
-		details = PaymentPluginsRegistery[req.Plugin]
-	} else {
-		details = PaymentPluginsRegistery[defaultPlugin]
+		pluginName = req.Plugin
 	}
-	if details.Plugin != nil {
-		result, err := details.Plugin.Refund(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+	plugin, ok := s.registry.GetPlugin("payment", pluginName)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "plugin not found")
 	}
-
-	if details.Client != nil {
-		return details.Client.Refund(ctx, req)
-	}
-
-	return nil, fmt.Errorf("no valid plugin or client found for plugin: %s", defaultPlugin)
+	return plugin.(PaymentServiceInterface).Refund(ctx, req)
 }
 
-func (s *PaymentService) Status(ctx context.Context, req *pb_payment.StatusRequest) (*pb_payment.StatusResponse, error) {
+func (s *PaymentService) Status(ctx context.Context, req *pb.StatusRequest) (*pb.StatusResponse, error) {
 	godotenv.Load(".env")
-	defaultPlugin := os.Getenv("PAYMENT_PLUGIN")
-	var details PaymentPluginDetails
+	pluginName := os.Getenv("PAYMENT_PLUGIN")
+
 	if req.Plugin != "" {
-		details = PaymentPluginsRegistery[req.Plugin]
-	} else {
-		details = PaymentPluginsRegistery[defaultPlugin]
+		pluginName = req.Plugin
 	}
-	if details.Plugin != nil {
-		result, err := details.Plugin.Status(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+	plugin, ok := s.registry.GetPlugin("payment", pluginName)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "plugin not found")
 	}
-
-	if details.Client != nil {
-		return details.Client.Status(ctx, req)
-	}
-
-	return nil, fmt.Errorf("no valid plugin or client found for plugin: %s", defaultPlugin)
+	return plugin.(PaymentServiceInterface).Status(ctx, req)
 }
