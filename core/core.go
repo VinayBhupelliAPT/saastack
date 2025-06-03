@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -117,15 +118,33 @@ func loggingUnaryInterceptor(
 ) (interface{}, error) {
 	start := time.Now()
 
+	// Log metadata
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		log.Printf("Metadata: %v", md)
+		log.Println("Metadata:")
+		for key, values := range md {
+			log.Printf("  %s: %v", key, values)
+		}
 	}
 
-	log.Printf("gRPC method: %s, Request: %+v", info.FullMethod, req)
+	// Pretty-print request
+	log.Printf("gRPC method: %s", info.FullMethod)
+	if reqJSON, err := json.MarshalIndent(req, "", "  "); err == nil {
+		log.Println("Request:\n", string(reqJSON))
+	} else {
+		log.Printf("Request: %+v", req)
+	}
 
+	// Call the handler
 	resp, err := handler(ctx, req)
 
-	log.Printf("gRPC method: %s, Response: %+v, Duration: %s", info.FullMethod, resp, time.Since(start))
+	// Pretty-print response
+	if respJSON, err := json.MarshalIndent(resp, "", "  "); err == nil {
+		log.Println("Response:\n", string(respJSON))
+	} else {
+		log.Printf("Response: %+v", resp)
+	}
+
+	log.Printf("Duration: %s", time.Since(start))
 	if err != nil {
 		log.Printf("gRPC error: %v", err)
 	}
@@ -180,9 +199,14 @@ func Start() {
 	}
 
 	log.Printf("Total services registered: %d", servicesRegistered)
-
+	info := s.GetServiceInfo()
+	pretty, err := json.MarshalIndent(info, "", "  ")
+	if err != nil {
+		log.Fatalf("Failed to marshal service info: %v", err)
+	}
+	log.Println("gRPC server info:\n", string(pretty))
 	// Print information about registered gRPC services
-	log.Printf("gRPC server info: %+v", s.GetServiceInfo())
+	// log.Printf("gRPC server info: %+v", s.GetServiceInfo())
 
 	// Start gRPC server
 	go func() {
