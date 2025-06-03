@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package proto;
+option go_package = "./";
+
+import "google/api/annotations.proto";
+
+service BookstoreService {
+  rpc AddBook(AddBookRequest) returns (GenericResponse) {
+    option (google.api.http) = {
+      post: "/books/add"
+      body: "*"
+    };
+  }
+
+  rpc GetBook(GetBookRequest) returns (GenericResponse) {
+    option (google.api.http) = {
+      get: "/books/{isbn}"
+    };
+  }
+
+  rpc ListBooks(ListBooksRequest) returns (ListBooksResponse) {
+    option (google.api.http) = {
+      get: "/books"
+    };
+  }
+
+  rpc DeleteBook(DeleteBookRequest) returns (GenericResponse) {
+    option (google.api.http) = {
+      delete: "/books/{isbn}"
+    };
+  }
+}
+
+message AddBookRequest {
+  string isbn = 1;
+  string title = 2;
+  string author = 3;
+  string year_published = 4;
+  string plugin = 5;
+}
+
+message GetBookRequest {
+  string isbn = 1;
+  string plugin = 2;
+}
+
+message DeleteBookRequest {
+  string isbn = 1;
+  string plugin = 2;
+}
+
+message ListBooksRequest {
+  string plugin = 1;
+}
+
+message GenericResponse {
+  string result = 1;
+}
+
+message ListBooksResponse {
+  repeated string books = 1;
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"saastack/core"
+	_ "saastack/interfaces/bookstore"
 	_ "saastack/interfaces/notification"
 	_ "saastack/interfaces/payment"
 	_ "saastack/plugins"
